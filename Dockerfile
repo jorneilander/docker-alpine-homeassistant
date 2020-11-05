@@ -1,32 +1,31 @@
-FROM alpine:3.10
+FROM python:3.8-alpine
 LABEL maintainer="Philipp Hellmich <phil@hellmi.de>"
 LABEL Description="Home Assistant"
 
 ARG TIMEZONE=Europe/Paris
 ARG UID=1000
 ARG GUID=1000
-ARG VERSION=0.110.1
-ARG PLUGINS="frontend|otp|QR|sqlalchemy|netdisco|distro|xmltodict|mutagen|warrant|hue|xiaomi|fritz|hole|http|google|psutil|weather|musiccast|nmap|webpush|unifi|uptimerobot|speedtest|rxv|gTTS|wakeonlan|websocket|paho-mqtt|miio|purecoollink|telegram|prometheus|pyhomematic|panasonic_viera|nabucasa|PyNaCl|purecool|influxdb|pillow|getmac|watchdog|doods|av|HAP|routeros"
+ARG VERSION=0.117.5
 
-ADD "https://raw.githubusercontent.com/home-assistant/home-assistant/${VERSION}/requirements_all.txt" /tmp
+ADD "https://raw.githubusercontent.com/home-assistant/core/${VERSION}/requirements.txt" /tmp/requirements.txt
+ADD "https://raw.githubusercontent.com/home-assistant/core/${VERSION}/requirements_all.txt" /tmp/requirements_all.txt
+ADD "https://raw.githubusercontent.com/home-assistant/core/${VERSION}/homeassistant/package_constraints.txt" /tmp/homeassistant/package_constraints.txt
 
-RUN apk add --no-cache git python3 ca-certificates nmap iputils ffmpeg mariadb-client mariadb-connector-c tini libxml2 libxslt && \
+RUN apk add --no-cache git ca-certificates nmap iputils ffmpeg mariadb-client mariadb-connector-c tini libxml2 libxslt && \
+    rm -rf /var/tmp/* /var/cache/apk/* && \
     chmod u+s /bin/ping && \
     addgroup -g ${GUID} hass && \
-    adduser -D -G hass -s /bin/sh -u ${UID} hass && \
-    export MAKEFLAGS="-j$(nproc)" && \
+    adduser -D -G hass -s /bin/sh -u ${UID} hass
+
+RUN export MAKEFLAGS="-j$(nproc)" && \
     export GNUMAKEFLAGS="-j$(nproc)" && \
-    pip3 install --upgrade --no-cache-dir pip && \
-    apk add --no-cache --virtual=build-dependencies build-base linux-headers tzdata python3-dev libffi-dev libressl-dev libxml2-dev libxslt-dev mariadb-connector-c-dev jpeg-dev ffmpeg-dev glib-dev && \
+    apk add --no-cache --virtual=build-dependencies cython autoconf openzwave-dev eudev-dev cmake build-base linux-headers tzdata libffi-dev libressl-dev libxml2-dev libxslt-dev mariadb-connector-c-dev jpeg-dev ffmpeg-dev glib-dev && \
     cp "/usr/share/zoneinfo/${TIMEZONE}" /etc/localtime && echo "${TIMEZONE}" > /etc/timezone && \
-    sed '/^$/q' /tmp/requirements_all.txt > /tmp/requirements_core.txt && \
-    sed '1,/^$/d' /tmp/requirements_all.txt > /tmp/requirements_plugins.txt && \
-    egrep -i -e "${PLUGINS}" /tmp/requirements_plugins.txt | grep -v '#' > /tmp/requirements_plugins_filtered.txt && \
-    pip3 install --no-cache-dir -r /tmp/requirements_core.txt && \
-    pip3 install --no-cache-dir -r /tmp/requirements_plugins_filtered.txt && \
-    pip3 install --no-cache-dir ujson && \
-    pip3 install --no-cache-dir mysqlclient && \
-    pip3 install --no-cache-dir homeassistant=="${VERSION}" && \
+    pip install wheel && \
+    pip install -r /tmp/requirements_all.txt && \
+    pip install ujson && \
+    pip install mysqlclient && \
+    pip install homeassistant=="${VERSION}" && \
     apk del build-dependencies && \
     rm -rf /tmp/* /var/tmp/* /var/cache/apk/*
 
