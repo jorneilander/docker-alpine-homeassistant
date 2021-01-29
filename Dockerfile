@@ -1,39 +1,103 @@
-FROM alpine:3.10
-LABEL maintainer="Philipp Hellmich <phil@hellmi.de>"
+# syntax =  docker/dockerfile:experimental
+ARG ALPINE_VERSION
+
+FROM --platform=${TARGETPLATFORM} alpine:${ALPINE_VERSION}
+LABEL maintainer="Jorn Eilander <jorn.eilander@azorion.com>"
 LABEL Description="Home Assistant"
 
-ARG TIMEZONE=Europe/Paris
-ARG UID=1000
-ARG GUID=1000
-ARG VERSION=0.110.1
-ARG PLUGINS="frontend|otp|QR|sqlalchemy|netdisco|distro|xmltodict|mutagen|warrant|hue|xiaomi|fritz|hole|http|google|psutil|weather|musiccast|nmap|webpush|unifi|uptimerobot|speedtest|rxv|gTTS|wakeonlan|websocket|paho-mqtt|miio|purecoollink|telegram|prometheus|pyhomematic|panasonic_viera|nabucasa|PyNaCl|purecool|influxdb|pillow|getmac|watchdog|doods|av|HAP|routeros"
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+ARG ALPINE_VERSION
+ARG HASS_VERSION=2021.1.5
+ARG WHEELS_BASE_URL="https://wheels.hass.io/alpine-${ALPINE_VERSION}"
 
-ADD "https://raw.githubusercontent.com/home-assistant/home-assistant/${VERSION}/requirements_all.txt" /tmp
+ARG TIMEZONE=Europe/Amsterdam
+ARG UID=8123
+ARG GUID=0
 
-RUN apk add --no-cache git python3 ca-certificates nmap iputils ffmpeg mariadb-client mariadb-connector-c tini libxml2 libxslt && \
-    chmod u+s /bin/ping && \
-    addgroup -g ${GUID} hass && \
-    adduser -D -G hass -s /bin/sh -u ${UID} hass && \
-    export MAKEFLAGS="-j$(nproc)" && \
-    export GNUMAKEFLAGS="-j$(nproc)" && \
-    pip3 install --upgrade --no-cache-dir pip && \
-    apk add --no-cache --virtual=build-dependencies build-base linux-headers tzdata python3-dev libffi-dev libressl-dev libxml2-dev libxslt-dev mariadb-connector-c-dev jpeg-dev ffmpeg-dev glib-dev && \
+ADD "https://raw.githubusercontent.com/home-assistant/core/${HASS_VERSION}/requirements.txt" /tmp/requirements.txt
+ADD "https://raw.githubusercontent.com/home-assistant/core/${HASS_VERSION}/requirements_all.txt" /tmp/requirements_all.txt
+ADD "https://raw.githubusercontent.com/home-assistant/core/${HASS_VERSION}/homeassistant/package_constraints.txt" /tmp/homeassistant/package_constraints.txt
+
+ADD components.list /tmp/components.list
+
+    # Install required base packages and remove any cache
+RUN apk add --no-cache \
+        python3 \
+        py3-pip \
+        git \
+        ca-certificates \
+        nmap \
+        iputils \
+        ffmpeg \
+        tini \
+        libxml2 \
+        libxslt \
+        tiff \
+        libressl && \
+    rm -rf /var/tmp/* /var/cache/apk/* && \
+    # Create the 'hass' user and ensure it's part of group 'root'; ensure it owns '/config'
+    adduser -D -G root -s /bin/sh -u ${UID} hass && \
+    mkdir /config; chown -R hass:root /config
+
+    # Mount this cache to enable sharing between the buildx jobs (e.g., amd64, arm64)
+    # Export make flags to speed up compiling of packages
+RUN --mount=type=cache,target=/root/.cache/pip MAKEFLAGS="-j$(nproc)"; export MAKEFLAGS && \
+    GNUMAKEFLAGS="-j$(nproc)"; export GNUMAKEFLAGS && \
+    # Install some temporary build dependencies
+    apk add --no-cache --virtual=build-dependencies \
+        python3-dev \
+        pcre-tools \
+        cython \
+        autoconf \
+        openzwave-dev \
+        eudev-dev \
+        cmake \
+        build-base \
+        linux-headers \
+        tzdata \
+        libffi-dev \
+        libressl-dev \
+        libxml2-dev \
+        libxslt-dev \
+        jpeg-dev \
+        ffmpeg-dev \
+        glib-dev && \
     cp "/usr/share/zoneinfo/${TIMEZONE}" /etc/localtime && echo "${TIMEZONE}" > /etc/timezone && \
-    sed '/^$/q' /tmp/requirements_all.txt > /tmp/requirements_core.txt && \
-    sed '1,/^$/d' /tmp/requirements_all.txt > /tmp/requirements_plugins.txt && \
-    egrep -i -e "${PLUGINS}" /tmp/requirements_plugins.txt | grep -v '#' > /tmp/requirements_plugins_filtered.txt && \
-    pip3 install --no-cache-dir -r /tmp/requirements_core.txt && \
-    pip3 install --no-cache-dir -r /tmp/requirements_plugins_filtered.txt && \
-    pip3 install --no-cache-dir ujson && \
-    pip3 install --no-cache-dir mysqlclient && \
-    pip3 install --no-cache-dir homeassistant=="${VERSION}" && \
+    pip install wheel && \
+    # Set appropriate variable depending on target architecture to collect wheels from wheels.hass.io
+    [ "${TARGETPLATFORM}" = 'linux/amd64' ] && ALPINE_ARCH=amd64; \
+    [ "${TARGETPLATFORM}" = 'linux/arm64' ] && ALPINE_ARCH=aarch64; \
+    [ "${TARGETPLATFORM}" = 'linux/arm/v7' ] && ALPINE_ARCH=armv7; \
+    # Install base requirements for Home Assistant
+    pip install --find-links \
+        "${WHEELS_BASE_URL}/${ALPINE_ARCH}" \
+        --requirement /tmp/requirements.txt && \
+    # Create a '|'-seperated list of components from components.list
+    for COMPONENT in $(grep -v -e "^$" -e "^#" /tmp/components.list); do \
+        COMPONENTS="${COMPONENTS:+${COMPONENTS}|}${COMPONENT}"; \
+    done && \
+    # Use '|'-seperated list to create the dependency set for requested components and install them
+    pcregrep --multiline --only-matching \
+        "^# homeassistant\.components\.(${COMPONENTS})\$(.|\n)*?\n\n" /tmp/requirements_all.txt >> /tmp/requirements_components.txt && \
+    pip install --find-links \
+        "${WHEELS_BASE_URL}/${ALPINE_ARCH}" \
+        --requirement /tmp/requirements_components.txt && \
+    pip install ujson && \
+    pip install homeassistant=="${HASS_VERSION}"  && \
     apk del build-dependencies && \
-    rm -rf /tmp/* /var/tmp/* /var/cache/apk/*
+    rm -rf \
+        /tmp/* \
+        /var/tmp/* \
+        /var/cache/apk/*
+    # !TODO Sync (e.g., rsync, ftp) built and collected wheels to remote location
+
+WORKDIR /config
+VOLUME /config
+USER hass
 
 EXPOSE 8123
 
-VOLUME /config
-
 ENTRYPOINT ["/sbin/tini", "--"]
 
-CMD [ "hass", "--open-ui", "--config=/config" ]
+CMD [ "hass", "--config=/config" ]
