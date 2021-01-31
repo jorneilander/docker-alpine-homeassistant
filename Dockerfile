@@ -13,7 +13,7 @@ ARG WHEELS_BASE_URL="https://wheels.hass.io/alpine-${ALPINE_VERSION}"
 
 ARG TIMEZONE=Europe/Amsterdam
 ARG UID=8123
-ARG GUID=0
+ARG GUID=8123
 
 ADD "https://raw.githubusercontent.com/home-assistant/core/${HASS_VERSION}/requirements.txt" /tmp/requirements.txt
 ADD "https://raw.githubusercontent.com/home-assistant/core/${HASS_VERSION}/requirements_all.txt" /tmp/requirements_all.txt
@@ -36,9 +36,10 @@ RUN apk add --no-cache \
         tiff \
         libressl && \
     rm -rf /var/tmp/* /var/cache/apk/* && \
-    # Create the 'hass' user and ensure it's part of group 'root'; ensure it owns '/config'
-    adduser -D -G root -s /bin/sh -u ${UID} hass && \
-    mkdir /config; chown -R hass:root /config
+    # Create the 'hass' user and ensure it's part of group 'hass'
+    addgroup -g ${GID} hass && \
+    adduser -D -G hass -s /bin/sh -u ${UID} hass && \
+    mkdir /config; chown -R hass:hass /config
 
     # Mount this cache to enable sharing between the buildx jobs (e.g., amd64, arm64)
     # Export make flags to speed up compiling of packages
@@ -90,14 +91,13 @@ RUN --mount=type=cache,target=/root/.cache/pip MAKEFLAGS="-j$(nproc)"; export MA
         /tmp/* \
         /var/tmp/* \
         /var/cache/apk/*
-    # !TODO Sync (e.g., rsync, ftp) built and collected wheels to remote location
 
 WORKDIR /config
 VOLUME /config
-USER hass
+USER ${UID}
 
 EXPOSE 8123
 
 ENTRYPOINT ["/sbin/tini", "--"]
 
-CMD [ "hass", "--config=/config" ]
+CMD [ "hass", "--config=/config", "--debug" ]

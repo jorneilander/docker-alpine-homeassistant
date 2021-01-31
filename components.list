@@ -7,6 +7,10 @@ updater
 tts
 met
 cloud
+otp
+
+# Temp fix for components.auth*
+homekit
 
 # Mandatory(?) Google components
 google

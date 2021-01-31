@@ -14,7 +14,7 @@ I'm using a proper manifest so you can use the main tags directly (no need for a
 
 ## Usage
 
-```
+```shell
 docker run --rm --detach --name homeassistant --publish 80:8123 failfr8er/home-assistant:latest
 ```
 
@@ -22,7 +22,7 @@ docker run --rm --detach --name homeassistant --publish 80:8123 failfr8er/home-a
 
 It's recommended to map a directory into the container to configure Home Assistant.
 
-```
+```shell
 -v /etc/homeassistant:/config \
 ```
 
