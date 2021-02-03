@@ -14,7 +14,7 @@ docker buildx build \
   --push \
   --build-arg ALPINE_VERSION=${ALPINE_VERSION} \
   --build-arg HASS_VERSION=${HASS_VERSION} \
-  --platform=linux/amd64 \
+  --platform=linux/amd64,linux/arm64,linux/arm/v7 \
   .
 
 # ,linux/arm64,linux/arm/v7
