@@ -13,7 +13,7 @@ ARG WHEELS_BASE_URL="https://wheels.hass.io/alpine-${ALPINE_VERSION}"
 
 ARG TIMEZONE=Europe/Amsterdam
 ARG UID=8123
-ARG GUID=8123
+ARG GID=8123
 
 ADD "https://raw.githubusercontent.com/home-assistant/core/${HASS_VERSION}/requirements.txt" /tmp/requirements.txt
 ADD "https://raw.githubusercontent.com/home-assistant/core/${HASS_VERSION}/requirements_all.txt" /tmp/requirements_all.txt
