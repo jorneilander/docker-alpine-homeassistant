@@ -8,6 +8,9 @@ tts
 met
 cloud
 otp
+dhcp
+frontend
+zeroconf
 
 # Temp fix for components.auth*
 homekit
@@ -34,7 +37,7 @@ buienradar
 discord
 ffmpeg
 tasmota
-frontend
+
 influxdb
 mycroft
 discovery
