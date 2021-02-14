@@ -39,7 +39,7 @@ RUN apk add --no-cache \
     # Create the 'hass' user and ensure it's part of group 'hass'
     addgroup -g ${GID} hass && \
     adduser -D -G hass -s /bin/sh -u ${UID} hass && \
-    mkdir /config; chown -R hass:hass /config
+    mkdir /config; chown -R ${UID}:${GID} /config
 
     # Mount this cache to enable sharing between the buildx jobs (e.g., amd64, arm64)
     # Export make flags to speed up compiling of packages
