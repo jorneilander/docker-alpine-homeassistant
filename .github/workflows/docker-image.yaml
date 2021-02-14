@@ -53,7 +53,7 @@ jobs:
       - name: Build and publish
         id: vars
         run: |
-          ./build.sh
+          ./build.sh push
 
       # - name: Push to Docker Hub
       #   uses: docker/build-push-action@v2

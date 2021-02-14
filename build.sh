@@ -1,7 +1,6 @@
 #!/bin/bash
 # set -x
 
-
 ALPINE_VERSION=3.12
 IMAGE_NAME=failfr8er/home-assistant
 HASS_RAW=$(curl -H "Accept: application/vnd.github.v3+json" -s https://api.github.com/repos/home-assistant/core/releases/latest)
@@ -16,6 +15,6 @@ docker buildx build \
   --"${1:-load}" \
   --build-arg ALPINE_VERSION=${ALPINE_VERSION} \
   --build-arg HASS_VERSION=${HASS_VERSION} \
-  --platform=linux/amd64 \
+  --platform=linux/amd64,linux/arm64 \
   --progress plain \
   .
