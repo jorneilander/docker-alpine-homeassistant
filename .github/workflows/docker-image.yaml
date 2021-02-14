@@ -20,10 +20,6 @@ jobs:
   build_and_publish:
     runs-on: ubuntu-latest
     steps:
-      # - name: Set vars
-      #   id: vars
-      #   run: echo ::set-output name=short_ref::${GITHUB_REF#refs/*/}
-
       - name: Checkout repository
         uses: actions/checkout@v2
 
@@ -51,36 +47,22 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
       - name: Build and publish
-        id: vars
+        id: build_and_push
         run: |
           ./build.sh push
-
-      # - name: Push to Docker Hub
-      #   uses: docker/build-push-action@v2
-      #   with:
-      #     push: true
-      #     build-args: |
-      #       HASS_VERSION=${{ steps.vars.outputs.short_ref }}
-      #       ALPINE_VERSION=3.12
-      #     tags: |
-      #       failfr8er/home-assistant:${{ steps.vars.outputs.short_ref }}
-      #       failfr8er/home-assistant:latest
-      #     platforms: linux/amd64,linux/arm64,linux/arm/v7
-      #     cache-from: type=local,src=/tmp/.buildx-cache
-      #     cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
 
       - name: Run Dive
         uses: yuichielectric/dive-action@0.0.4
         continue-on-error: true
         with:
-          image: "failfr8er/home-assistant:${{ steps.vars.outputs.short_ref }}"
+          image: "failfr8er/home-assistant:${{ steps.build_and_push.outputs.HASS_VERSION }}"
           config-file: ${{ github.workspace }}/.dive-ci.yml
 
       - name: Container image scan
         uses: Azure/container-scan@v0
         continue-on-error: true
         with:
-          image-name: "failfr8er/home-assistant:${{ steps.vars.outputs.short_ref }}"
+          image-name: "failfr8er/home-assistant:${{ steps.build_and_push.outputs.HASS_VERSION }}"
 
       - name: Rollback Release
         if: failure()

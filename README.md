@@ -7,7 +7,7 @@ Small docker image with [Home Assistant](https://home-assistant.io/) based on [A
 This image should be available ~~(unless a problem happened on my side) for the following architectures~~:
 
 * `amd64`
-* `armhf`
+* ~~`armhf`~~
 * `arm64`
 
 I'm using a proper manifest so you can use the main tags directly (no need for amd64-X.X.X).
@@ -26,7 +26,7 @@ It's recommended to map a directory into the container to configure Home Assista
 -v /etc/homeassistant:/config \
 ```
 
-By default this container run as `hass` with uid 8123 and gid 0.
+By default this container run as `hass` with uid 8123 and gid 8123.
 This allows it to be run inside a cluster (e.g., `OpenShift`, `K8S`) with appropriate privilege limitations.
 
 ### Plugins
