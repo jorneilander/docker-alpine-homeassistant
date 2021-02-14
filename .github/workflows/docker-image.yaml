@@ -62,7 +62,7 @@ jobs:
             --cache-to=type=local,dest=/tmp/.buildx-cache \
             --tag ${IMAGE_NAME}:${HASS_VERSION} \
             --tag ${IMAGE_NAME}:latest \
-            --"${1:-load}" \
+            --push \
             --build-arg ALPINE_VERSION=${ALPINE_VERSION} \
             --build-arg HASS_VERSION=${HASS_VERSION} \
             --platform=linux/amd64,linux/arm64 \
