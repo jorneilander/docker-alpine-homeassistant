@@ -3,9 +3,8 @@ name: Publish Home Assistant
 on:
   repository_dispatch:
   workflow_dispatch:
-  release:
-    types:
-      - published
+  schedule:
+    - cron: "0 4 * * *"
 
 jobs:
   lint_repository:
